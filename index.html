@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMOLINK Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans">
+
+    <div class="max-w-4xl mx-auto px-4 py-12">
+        <header class="flex justify-between items-center mb-12 border-b border-slate-800 pb-6">
+            <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">SMOLINK</h1>
+            <button id="loginBtn" onclick="login()" class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2 rounded-lg transition">
+                Login with Google
+            </button>
+        </header>
+
+        <main id="dashboard" class="hidden space-y-8">
+            <section class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl">
+                <h2 class="text-xl font-bold mb-4">Shorten a New URL</h2>
+                <form id="shortenForm" onsubmit="createLink(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="url" id="longURL" placeholder="https://example.com/very/long/url" required 
+                            class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-cyan-400 text-slate-200">
+                        <input type="text" id="description" placeholder="Link Description" required 
+                            class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-cyan-400 text-slate-200">
+                    </div>
+                    <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-2.5 rounded-lg transition">
+                        Shorten Link
+                    </button>
+                </form>
+            </section>
+
+            <section class="bg-slate-800 rounded-xl border border-slate-700 shadow-xl overflow-hidden">
+                <div class="p-6 border-b border-slate-700">
+                    <h2 class="text-xl font-bold">Your Shortened Links</h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-800 text-slate-400 text-sm uppercase tracking-wider border-b border-slate-700">
+                                <th class="py-3 px-6">Short Link</th>
+                                <th class="py-3 px-6">Original URL</th>
+                                <th class="py-3 px-6">Description</th>
+                                <th class="py-3 px-6">Clicks</th>
+                            </tr>
+                        </thead>
+                        <tbody id="linksTableBody" class="divide-y divide-slate-700 text-sm">
+                            </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // Update this variable with your live Go API production URL once deployed
+        const API_BASE = "https://smolink-zxco.onrender.com/smolink";
+
+        // Simple check to determine if the user has a active session cookie
+        function checkAuth() {
+            // Because our AuthGuard reads the token from the HTTP-Only cookie, 
+            // we let the backend verify us via the /user/me route.
+            fetch(`${API_BASE}/user/me`)
+                .then(res => {
+                    if (res.ok) {
+                        document.getElementById('loginBtn').innerText = "Logged In";
+                        document.getElementById('dashboard').classList.remove('hidden');
+                        fetchLinks();
+                    }
+                })
+                .catch(() => console.log("Not logged in yet."));
+        }
+
+        function login() {
+            // Direct redirect out to our backend login handler
+            window.location.href = `${API_BASE}/login`;
+        }
+
+        async function fetchLinks() {
+            try {
+                const response = await fetch(`${API_BASE}/links/mappings`);
+                const result = await response.json();
+                if (result.status === "success") {
+                    const tbody = document.getElementById('linksTableBody');
+                    tbody.innerHTML = "";
+                    
+                    result.data.forEach(link => {
+                        tbody.innerHTML += `
+                            <tr class="hover:bg-slate-700/50 transition">
+                                <td class="py-4 px-6 text-cyan-400 font-mono">
+                                    <a href="${API_BASE}/${link.key}" target="_blank">/${link.key}</a>
+                                </td>
+                                <td class="py-4 px-6 text-slate-400 max-w-xs truncate">${link.longURL}</td>
+                                <td class="py-4 px-6 text-slate-300">${link.description}</td>
+                                <td class="py-4 px-6 font-bold text-slate-200">${link.clicks || 0}</td>
+                            </tr>
+                        `;
+                    });
+                }
+            } catch (err) {
+                console.error("Error fetching links:", err);
+            }
+        }
+
+        async function createLink(e) {
+            e.preventDefault();
+            const longURL = document.getElementById('longURL').value;
+            const description = document.getElementById('description').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/links/addURL`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ longURL, description, expiration: 0 })
+                });
+                
+                if (response.ok) {
+                    document.getElementById('shortenForm').reset();
+                    fetchLinks(); // Refresh list
+                }
+            } catch (err) {
+                console.error("Error creating link:", err);
+            }
+        }
+
+        // Run checking sequence immediately on load
+        window.onload = checkAuth;
+    </script>
+</body>
+</html>
