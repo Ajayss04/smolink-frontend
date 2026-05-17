@@ -56,13 +56,12 @@
 
     <script>
         // Update this variable with your live Go API production URL once deployed
+        // Update this variable with your live Go API production URL
         const API_BASE = "https://smolink-zxco.onrender.com/smolink";
 
-        // Simple check to determine if the user has a active session cookie
         function checkAuth() {
-            // Because our AuthGuard reads the token from the HTTP-Only cookie, 
-            // we let the backend verify us via the /user/me route.
-            fetch(`${API_BASE}/user/me`)
+            // ADDED: { credentials: 'include' }
+            fetch(`${API_BASE}/user/me`, { credentials: 'include' })
                 .then(res => {
                     if (res.ok) {
                         document.getElementById('loginBtn').innerText = "Logged In";
@@ -74,13 +73,13 @@
         }
 
         function login() {
-            // Direct redirect out to our backend login handler
             window.location.href = `${API_BASE}/login`;
         }
 
         async function fetchLinks() {
             try {
-                const response = await fetch(`${API_BASE}/links/mappings`);
+                // ADDED: { credentials: 'include' }
+                const response = await fetch(`${API_BASE}/links/mappings`, { credentials: 'include' });
                 const result = await response.json();
                 if (result.status === "success") {
                     const tbody = document.getElementById('linksTableBody');
@@ -113,6 +112,7 @@
                 const response = await fetch(`${API_BASE}/links/addURL`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include', // ADDED THIS LINE
                     body: JSON.stringify({ longURL, description, expiration: 0 })
                 });
                 
@@ -125,7 +125,6 @@
             }
         }
 
-        // Run checking sequence immediately on load
         window.onload = checkAuth;
     </script>
 </body>
